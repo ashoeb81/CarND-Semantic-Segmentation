@@ -5,9 +5,9 @@ import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
 
-
 # Check TensorFlow Version
-assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
+assert LooseVersion(tf.__version__) >= LooseVersion(
+    '1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
 print('TensorFlow Version: {}'.format(tf.__version__))
 
 # Check for a GPU
@@ -41,6 +41,7 @@ def load_vgg(sess, vgg_path):
     vgg_layer4_out_tensor = graph.get_tensor_by_name(vgg_layer4_out_tensor_name)
     vgg_layer7_out_tensor = graph.get_tensor_by_name(vgg_layer7_out_tensor_name)
     return vgg_input_tensor, vgg_keep_prob_tensor, vgg_layer3_out_tensor, vgg_layer4_out_tensor, vgg_layer7_out_tensor
+
 
 tests.test_load_vgg(load_vgg, tf)
 
@@ -89,6 +90,7 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
 
     return output
 
+
 tests.test_layers(layers)
 
 
@@ -106,6 +108,7 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     xentropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
     train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(xentropy_loss)
     return logits, train_op, xentropy_loss
+
 
 tests.test_optimize(optimize)
 
@@ -126,7 +129,17 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    pass
+    sess.run(tf.global_variables_initializer())
+
+    for epoch in range(epochs):
+
+        for images, gt_images in get_batches_fn(batch_size):
+            _, loss = sess.run([train_op, cross_entropy_loss],
+                               feed_dict={input_image: images, correct_label: gt_images, keep_prob: 0.90,
+                                          learning_rate: 0.001})
+        print('Epoch %d | Loss %f' % (epoch, loss))
+
+
 # tests.test_train_nn(train_nn)
 
 
@@ -140,9 +153,6 @@ def run():
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
 
-    import pdb
-    pdb.set_trace()
-
     # OPTIONAL: Train and Inference on the cityscapes dataset instead of the Kitti dataset.
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     #  https://www.cityscapes-dataset.com/
@@ -152,27 +162,24 @@ def run():
         vgg_path = os.path.join(data_dir, 'vgg')
 
         # Create function to get batches
-        get_batches_fn = helper.gen_batch_function(os.path.join(data_dir, 'data_road/training'), 512)
+        get_batches_fn = helper.gen_batch_function(os.path.join(data_dir, 'data_road/training'), image_shape)
 
         # OPTIONAL: Augment Images for better results
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
         input, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
-
         last_layer = layers(layer3_out, layer4_out, layer7_out, 2)
-
-        correct_label = tf.place_holder(tf.float32, [None, None, None, num_classes])
-
-        logits, train_op, xentropy_loss = optimize(last_layer, correct_label, 1e-3, num_classes)
+        correct_label = tf.placeholder(tf.float32, [None, None, None, num_classes])
+        learning_rate = tf.placeholder(tf.float32)
+        logits, train_op, xentropy_loss = optimize(last_layer, correct_label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
+        train_nn(sess, 50, 32, get_batches_fn, train_op, xentropy_loss, input, correct_label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
-        #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
-
-        # OPTIONAL: Apply the trained model to a video
-
+        helper.save_inference_samples('segmentation_model_output_', data_dir, sess, image_shape, logits, keep_prob,
+                                      input)
 
 if __name__ == '__main__':
     run()
