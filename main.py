@@ -146,15 +146,17 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     sess.run(tf.global_variables_initializer())
 
     for epoch in range(epochs):
-
+        batch_counter = 0
         for images, gt_images in get_batches_fn(batch_size):
             _, loss = sess.run([train_op, cross_entropy_loss],
                                feed_dict={input_image: images, correct_label: gt_images, keep_prob: 0.90,
                                           learning_rate: 0.001})
-        print('Epoch %d | Loss %f' % (epoch, loss))
+            if (batch_counter % 10) == 0:
+                print('Epoch %d | Batch %d | Loss %f' % (epoch, batch_counter, loss))
+            batch_counter += 1
 
 
-# tests.test_train_nn(train_nn)
+tests.test_train_nn(train_nn)
 
 
 def run():
@@ -189,10 +191,10 @@ def run():
         logits, train_op, xentropy_loss = optimize(last_layer, correct_label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
-        train_nn(sess, 1, 1, get_batches_fn, train_op, xentropy_loss, input, correct_label, keep_prob, learning_rate)
+        train_nn(sess, 100, 2, get_batches_fn, train_op, xentropy_loss, input, correct_label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
-        helper.save_inference_samples('segmentation_model_output_', data_dir, sess, image_shape, logits, keep_prob,
+        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob,
                                       input)
 
 if __name__ == '__main__':
