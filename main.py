@@ -55,30 +55,44 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
-    output = tf.layers.conv2d(
+    vgg_layer7_1x1 = tf.layers.conv2d(
         vgg_layer7_out,
-        vgg_layer7_out.get_shape()[-1],
+        num_classes,
+        1,
+        padding='same',
+        kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+
+    vgg_layer4_1x1 = tf.layers.conv2d(
+        vgg_layer4_out,
+        num_classes,
+        1,
+        padding='same',
+        kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+
+    vgg_layer3_1x1 = tf.layers.conv2d(
+        vgg_layer3_out,
+        num_classes,
         1,
         padding='same',
         kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
 
     output = tf.layers.conv2d_transpose(
-        output,
-        vgg_layer4_out.get_shape()[-1],
+        vgg_layer7_1x1,
+        num_classes,
         4,
         2,
         padding='same',
         kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-    output = tf.add(output, vgg_layer4_out)
+    output = tf.add(output, vgg_layer4_1x1)
 
     output = tf.layers.conv2d_transpose(
         output,
-        vgg_layer3_out.get_shape()[-1],
+        num_classes,
         4,
         2,
         padding='same',
         kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-    output = tf.add(output, vgg_layer3_out)
+    output = tf.add(output, vgg_layer3_1x1)
 
     output = tf.layers.conv2d_transpose(
         output,
@@ -175,7 +189,7 @@ def run():
         logits, train_op, xentropy_loss = optimize(last_layer, correct_label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
-        train_nn(sess, 50, 32, get_batches_fn, train_op, xentropy_loss, input, correct_label, keep_prob, learning_rate)
+        train_nn(sess, 1, 1, get_batches_fn, train_op, xentropy_loss, input, correct_label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
         helper.save_inference_samples('segmentation_model_output_', data_dir, sess, image_shape, logits, keep_prob,
